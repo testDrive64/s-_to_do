@@ -3,38 +3,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Result;
 use structopt::StructOpt;
 use std::env;
+use std::str::FromStr;
+use std::string::ParseError;
 use std::io::{BufWriter, Write};
 use std::fs::File;
 
-// Controller to open and save the todo list.
-#[derive(StructOpt)]
-struct Todo_Ctrl {
-    #[structopt(parse(from_os_str))]
-    data_file: std::path::PathBuf,
-    items: Vec<Todo>,
-}
-
-// Single task.
-#[derive(Serialize, Deserialize)]
-struct Todo {
-    task: String,
-    priority: Priority,
-    id: usize,
-}
-impl FromStr for Todo {
-    type Err = ParseStringError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let todo: Vec<&str> = s.trim_matches()
-                                .split(',')
-                                .collect();
-        let task = todo[0].parse::<string>()?;
-    }
-}
-
-
 // Priority of a task, default value is low, option command is -p.
-#[derive(Serialize, Deserialize)]
 enum Priority {
     Important,
     High,
@@ -42,19 +16,48 @@ enum Priority {
     Low,
 }
 
+// Single task.
+struct Todo {
+    task: String,
+    priority: Priority,
+    id: usize,
+}
+
+// Controller to open and save the todo list.
+struct Todo_Ctrl {
+    data_file: std::path::PathBuf,
+    items: Vec<Todo>,
+}
+
 // Command reader, don't know if it is really in need.
+
+#[derive(StructOpt)]
 struct Cli {
+    #[structopt(short = "a", long = "add")]
     cmd: String,
     options: Vec<String>,
 }
 
+#[derive(StructOpt)]
 struct Cli_Add {
-    cmd: String,
     task: String,
     priority: Priority,
     datafilename: String,
 }
+impl FromStr for Cli_Add {
+    type Err = ParseError;
+    
+    pub fn from_str(s: &str) -> Result<Self,Self::Err> {
+        let cmd: Vec<&str> = s.split(' ').collect();
 
+        match &s {
+            Low => Ok(Priority::Low);
+            Medium => Ok(Priority::Medium);
+            High => Ok(Priority::High);
+            Important => Ok(Priority::Important);
+        }
+    }
+}
 
 // Function to handle the income args.
 fn parse_config(args: &[String]) -> (&str, &str) {
@@ -71,6 +74,10 @@ fn parse_config(args: &[String]) -> (&str, &str) {
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
+    let cmd = args[1];
+    if args[1] == "All" {
+        let add = Cli_Add::from_args();
+    }
 
     let (query, filename) = parse_config(&args);
 
@@ -80,9 +87,9 @@ fn main() -> std::io::Result<()> {
     }
 
     let cmd = Cli {
-        cmd = query.to_string(),
-        options.append(filename),
-    }
+        cmd : query.to_string(),
+        options: Vec::new(),
+    };
 
     //let new_task = Todo {
     //    task: cmd.task,
@@ -91,13 +98,13 @@ fn main() -> std::io::Result<()> {
     //};
 
     // Create temp file
-    let temp_file = env::temp_dir().join(cmd.data_file);
+    let temp_file = env::temp_dir().join(filename);
 
     // Create file if not exists
     let mut file = File::create(temp_file).unwrap();
     let mut writer = BufWriter::new(file);
 
-//    let encoded = serde_json::to_string(&new_task).unwrap();
+ // let encoded = serde_json::to_string(&new_task).unwrap();
 
  //   println!("{}", encoded);
 
