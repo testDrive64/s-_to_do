@@ -2,7 +2,6 @@ use std::string::ParseError;
 use std::error::Error;
 use std::str::FromStr;
 use std::env;
-use std::env::home_dir;
 use serde::{Deserialize, Serialize};
 //use serde_json::Result;
 use std::fs::File;
@@ -82,6 +81,13 @@ impl TodoCtrl {
         //let tasks: Vec<Todo>
         self.items = serde_json::from_reader(reader)?; //.expect("Can not find the file.");
         //self.items = tasks;
+        Ok(())
+    }
+
+    pub fn list(&self) -> std::io::Result<()> {
+        for task in &self.items {
+            println!("{:#?}", task);
+        }
         Ok(())
     }
 }

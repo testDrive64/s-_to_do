@@ -14,13 +14,32 @@ use std::io::Write;
 
 mod todo;
 
+#[derive(Debug, Copy, Clone, Deserialize, Serialize)]
+enum Status {
+    New,
+    Progress,
+    Done,
+}
+impl FromStr for Status {
+    type Err = ParseError;
 
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let status: &str = &s.to_lowercase();
+        match status
+        {
+            "new" => Ok(Status::New),
+            "progress" => Ok(Status::Progress),
+            "done" => Ok(Status::Done),
+            _ => Ok(Status::New),
+        }
+    }
+}
 
 // Command reader, don't know if it is really in need.
 #[derive(StructOpt, Debug)]
 #[structopt(name = "shit_to_do")]
 struct Cli {
-    cmd: String,
+    //cmd: String,
     /// Set a priority 1 - 4, 1 is really important.
     #[structopt(short, long, default_value = "Low")]
     priority: todo::Priority,
@@ -31,19 +50,19 @@ struct Cli {
     #[structopt(short, long)]
     list: bool,
     /// Set status, -s [progress, done].
-    #[structopt(short, long, default_value = "")]
-    status: String,
+    #[structopt(short, long, default_value = "New")]
+    status: Status,
 
 }
 
 fn main() -> std::io::Result<()> {
     let args = Cli::from_args();
 
-//    println!("{:#?}", args);
+    //println!("{:#?}", args);
     let mut datapath = PathBuf::new();
     match env::home_dir() {
         Some(mut path) => {
- //           println!("Your home directory, probably: {}", path.display());
+            //println!("Your home directory, probably: {}", path.display());
             path.push(".tridos.json");
             datapath = path
         },
@@ -66,12 +85,13 @@ fn main() -> std::io::Result<()> {
             todo_ctrl.items.push(new_task);
         }
     } else if args.list {
-        for task in &todo_ctrl.items {
-            println!("{:#?}", task);
-        }    
+        todo_ctrl.list();
+        //for task in &todo_ctrl.items {
+        //    println!("{:#?}", task);
+        //}    
     }
     
-//    println!("{:#?}", todo_ctrl);
+    //println!("{:#?}", todo_ctrl);
     todo_ctrl.save();
     Ok(())
 }
