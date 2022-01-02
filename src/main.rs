@@ -14,27 +14,6 @@ use std::io::Write;
 
 mod todo;
 
-#[derive(Debug, Copy, Clone, Deserialize, Serialize)]
-enum Status {
-    New,
-    Progress,
-    Done,
-}
-impl FromStr for Status {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let status: &str = &s.to_lowercase();
-        match status
-        {
-            "new" => Ok(Status::New),
-            "progress" => Ok(Status::Progress),
-            "done" => Ok(Status::Done),
-            _ => Ok(Status::New),
-        }
-    }
-}
-
 // Command reader, don't know if it is really in need.
 #[derive(StructOpt, Debug)]
 #[structopt(name = "shit_to_do")]
@@ -50,10 +29,19 @@ struct Cli {
     #[structopt(short, long)]
     list: bool,
     /// Set status, -s [progress, done].
-    #[structopt(short, long, default_value = "New")]
-    status: Status,
+    #[structopt(short, long, default_value = "")]
+    status: todo::Status,
+    /// Choose a task.
+    #[structopt(short, long, default_value = "")]
+    task_num: String,
 
 }
+impl Cli {
+    pub fn run(&self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 
 fn main() -> std::io::Result<()> {
     let args = Cli::from_args();
@@ -62,37 +50,53 @@ fn main() -> std::io::Result<()> {
     let mut datapath = PathBuf::new();
     match env::home_dir() {
         Some(mut path) => {
-            //println!("Your home directory, probably: {}", path.display());
+//            println!("Your home directory, probably: {}", path.display());
             path.push(".tridos.json");
             datapath = path
         },
         None => println!("Impossible to get your home dir!"),
     }
+    println!("{:#?}", datapath);
 
-    if datapath.capacity() == 0 {
+    if datapath.as_os_str().is_empty() {
+        println!("Found empty datapath string.");
         datapath.push("~/.tridos.json");
     }
     let mut todo_ctrl = todo::TodoCtrl::new(datapath);
-    todo_ctrl.open();
+    let res = todo_ctrl.open();
+
+    println!("{:#?}", res);
 
     if !args.add.is_empty() {
         for todo in args.add.iter() {
             let new_task = todo::Todo {
-                id: 1,
+                id: 0,
                 task: todo.to_string(),
                 priority: args.priority,
+                status: args.status,
             }; 
-            todo_ctrl.items.push(new_task);
+            todo_ctrl.add(new_task);
         }
-    } else if args.list {
+        todo_ctrl.save();
+    } 
+
+    if args.list {
         todo_ctrl.list();
-        //for task in &todo_ctrl.items {
-        //    println!("{:#?}", task);
-        //}    
     }
-    
-    //println!("{:#?}", todo_ctrl);
-    todo_ctrl.save();
+
+    if args.status != todo::Status::Open && args.task_num != "".to_string() {
+//        let mut task = todo_ctrl.items.iter().filter(|t| t.id == args.task_num.parse::<usize>().unwrap());
+//        task.status = args.status;
+        println!("Status change ...");
+        for mut task in todo_ctrl.items.iter_mut() {
+            if task.id == args.task_num.parse::<usize>().unwrap() {
+                println!("Found the id.");
+                task.status = args.status;
+            }
+        }
+        todo_ctrl.save();
+    }
+
     Ok(())
 }
 

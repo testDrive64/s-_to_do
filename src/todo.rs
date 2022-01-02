@@ -10,13 +10,29 @@ use std::io::BufWriter;
 use std::io::Write;
 use std::io::BufReader;
 
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq)]
+pub enum Status {
+    Open,
+    Progress,
+    Done,
+}
+impl FromStr for Status {
+    type Err = ParseError;
 
-pub fn run () {
-    //
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let status: &str = &s.to_lowercase();
+        match status
+        {
+            "open" => Ok(Status::Open),
+            "progress" => Ok(Status::Progress),
+            "done" => Ok(Status::Done),
+            _ => Ok(Status::Open),
+        }
+    }
 }
 
 // Priority of a task, default value is low, option command is -p.
-#[derive(Debug, Copy, Clone, Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq)]
 pub enum Priority {
     Important,
     High,
@@ -26,12 +42,14 @@ pub enum Priority {
 impl FromStr for Priority {
     type Err = ParseError;
 
-    fn from_str(prio: &str) -> Result<Self, Self::Err> {
+    fn from_str(p: &str) -> Result<Self, Self::Err> {
+        // TODO accept numbers
+        let prio: &str = &p.to_lowercase();
         match prio {
-            "Important" => Ok(Priority::Important),
-            "High" => Ok(Priority::High),
-            "Medium" => Ok(Priority::Medium),
-            "Low" => Ok(Priority::Low),
+            "important" => Ok(Priority::Important),
+            "high" => Ok(Priority::High),
+            "medium" => Ok(Priority::Medium),
+            "low" => Ok(Priority::Low),
             _ => Ok(Priority::Low), // Err(format!("Could not parse the priority: {}", prio)),
         }
     }
@@ -40,9 +58,10 @@ impl FromStr for Priority {
 // Single task.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Todo {
+    pub id: usize,
     pub task: String,
     pub priority: Priority,
-    pub id: usize,
+    pub status: Status,
 }
 
 // Controller to open and save the todo list.
@@ -51,13 +70,18 @@ pub struct TodoCtrl {
     data_file: std::path::PathBuf,
     pub items: Vec<Todo>,
 }
-
 impl TodoCtrl {
     pub fn new(data_file: std::path::PathBuf) -> Self {
         Self {
-            data_file: data_file,
+            data_file,
             items: Vec::new(), 
         }
+    }
+
+    pub fn add(&mut self, mut todo: Todo) -> std::io::Result<()> {
+        todo.id = self.items.len();
+        &self.items.push(todo);
+        Ok(())
     }
 
     pub fn save(&self) -> std::io::Result<()> {
@@ -67,8 +91,6 @@ impl TodoCtrl {
         let mut file = File::create(temp_file).unwrap();
         let mut writer = BufWriter::new(file);
         let encoded = serde_json::to_string(&self.items).unwrap();
-        //println!("{}", encoded);
-        //println!("Write file ... ");
         serde_json::to_writer(&mut writer, &self.items)?;
         writer.flush()?;
         Ok(())
@@ -77,14 +99,12 @@ impl TodoCtrl {
     pub fn open(&mut self) -> std::io::Result<()> { //Vec<Todo>, io::Error> {
         let file = File::open(&self.data_file)?;
         let reader = BufReader::new(file);
-
-        //let tasks: Vec<Todo>
         self.items = serde_json::from_reader(reader)?; //.expect("Can not find the file.");
-        //self.items = tasks;
         Ok(())
     }
 
     pub fn list(&self) -> std::io::Result<()> {
+        println!("Todo List: {}", &self.items.len());
         for task in &self.items {
             println!("{:#?}", task);
         }
