@@ -16,10 +16,10 @@ sdo -l
 
 Add a new task
 ```
-sdo -a "sh*t to do"
+sdo -a "some to do"
 ```
 
 optional with a priority
 ```
-sdo -a "sh*t to do" -p [high, medium, low]
+sdo -a "some to do" -p [high, medium, low]
 ```
